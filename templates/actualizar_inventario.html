@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Actualizar Inventario | Sazón Carmelita</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body class="actualizar-inventario-body">
+    <div class="contenedor-formulario">
+        <h1>📦 Actualizar Inventario</h1>
+
+        {% if mensaje %}
+            <div class="mensaje-confirmacion">
+                {{ mensaje }}
+            </div>
+        {% endif %}
+
+        <form method="POST">
+            {% for sabor in sabores %}
+                <label for="{{ sabor }}">{{ sabor }}</label>
+                <input type="number" name="{{ sabor }}" min="0" value="{{ inventario.get(sabor, 0) }}">
+            {% endfor %}
+
+            <button type="submit" class="menu-button">✅ Guardar Cambios</button>
+        </form>
+
+        <div class="volver">
+            <a href="/">🏠 Volver al Menú Principal</a>
+        </div>
+    </div>
+</body>
+</html>

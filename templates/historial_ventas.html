@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial de Compras</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="fondo-inicio">
+    <div class="overlay"></div>
+
+    <div class="contenedor-inicio">
+        <h1 class="titulo-principal">📦 Historial de Compras</h1>
+
+        <table id="tablaVentas" class="display tabla-historial">
+            <thead>
+                <tr>
+                    <th>Seleccionar</th>
+                    <th>Fecha</th>
+                    <th>Bollos vendidos</th>
+                    <th>Total</th>
+                    <th>Vendedora</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for grupo in grupos %}
+                <tr>
+                    <td><input type="checkbox" class="grupo-checkbox" data-total="{{ grupo.total }}"></td>
+                    <td>{{ grupo.fecha }}</td>
+                    <td>
+                        <ul>
+                        {% for venta in grupo.ventas %}
+                            <li class="editable-cell">
+                                <span class="sabor-label" onclick="mostrarSelector(this)">{{ venta.sabor }}</span>
+                                <select onchange="guardarCambio(this, {{ venta.id }})">
+                                    <option value="Plátano">Plátano</option>
+                                    <option value="Fresa">Fresa</option>
+                                    <option value="Mango">Mango</option>
+                                    <option value="Coco">Coco</option>
+                                    <option value="Chocolate">Chocolate</option>
+                                    <option value="Nuez">Nuez</option>
+                                    <option value="Pay de Limón">Pay de Limón</option>
+                                </select>
+                                <button onclick="eliminarVenta({{ venta.id }})" class="eliminar mini">🗑️</button>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </td>
+                    <td>$ {{ grupo.total }}</td>
+                    <td>{{ grupo.vendedora }}</td>
+                    <td class="acciones">
+                        <button class="eliminar" onclick="eliminarGrupo('{{ grupo.grupo }}')">Eliminar grupo</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p class="total-seleccionado">Total seleccionado: $<span id="totalSeleccionado">0</span></p>
+
+        <div class="volver">
+            <a href="/">
+                <button class="menu-button">🏠 Volver al Menú Principal</button>
+            </a>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#tablaVentas').DataTable();
+
+            $('.grupo-checkbox').change(function() {
+                let total = 0;
+                $('.grupo-checkbox:checked').each(function() {
+                    total += parseFloat($(this).data('total'));
+                });
+                $('#totalSeleccionado').text(total);
+            });
+        });
+
+        function mostrarSelector(span) {
+            const select = span.nextElementSibling;
+            span.style.display = 'none';
+            select.style.display = 'inline-block';
+            select.value = span.textContent.trim();
+        }
+
+        function guardarCambio(select, id) {
+            const nuevoSabor = select.value;
+            fetch(`/editar_venta/${id}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sabor: nuevoSabor })
+            })
+            .then(response => {
+                if (response.ok) {
+                    const span = select.previousElementSibling;
+                    span.textContent = nuevoSabor;
+                    span.style.display = 'inline-block';
+                    select.style.display = 'none';
+                } else {
+                    alert("Error al actualizar el sabor");
+                }
+            });
+        }
+
+        function eliminarGrupo(grupo_id) {
+            if (confirm("¿Estás seguro de eliminar esta compra completa?")) {
+                fetch(`/eliminar_grupo_venta/${grupo_id}`, {
+                    method: "POST"
+                }).then(response => {
+                    if (response.ok) location.reload();
+                    else alert("Error al eliminar el grupo");
+                });
+            }
+        }
+
+        function eliminarVenta(id) {
+            if (confirm("¿Deseas eliminar este bollo vendido?")) {
+                fetch(`/eliminar_venta/${id}`, {
+                    method: "POST"
+                }).then(response => {
+                    if (response.ok) location.reload();
+                    else alert("Error al eliminar venta");
+                });
+            }
+        }
+    </script>
+</body>
+</html>

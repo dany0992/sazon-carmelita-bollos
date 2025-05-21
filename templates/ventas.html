@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro de Ventas | Sazón Carmelita</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body class="fondo-inicio">
+    <div class="overlay"></div>
+    <div class="contenedor-inicio">
+        <h1 class="titulo-principal">¿Qué vendiste hoy?</h1>
+
+        <div class="grid-personajes">
+            {% for sabor, imagen in personajes.items() %}
+            <div class="tarjeta-venta" onclick="vender('{{ sabor }}')">
+                <img src="{{ url_for('static', filename='img/' + imagen) }}" alt="{{ sabor }}">
+                <h3>{{ sabor }}</h3>
+                <p>${{ precios[sabor] }}</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <hr style="margin: 30px 0;">
+
+        <h2>Total a cobrar: <span id="total">$0</span></h2>
+        <ul id="resumen"></ul>
+
+        <button class="menu-button" onclick="enviarVenta()">✅ Finalizar venta</button>
+
+        <hr style="margin: 40px 0;">
+        <h2>📦 Inventario disponible</h2>
+        <div id="inventario">
+            {% for sabor, cantidad in inventario.items() %}
+                {% set clase = 'alto' %}
+                {% if cantidad <= 3 %}
+                    {% set clase = 'bajo' %}
+                {% elif cantidad <= 7 %}
+                    {% set clase = 'medio' %}
+                {% endif %}
+                <div class="item-inventario {{ clase }}">{{ sabor }}: {{ cantidad }}</div>
+            {% endfor %}
+        </div>
+
+        <div style="margin-top: 30px;">
+            <a href="/">
+                <button class="menu-button">🏠 Volver al Menú Principal</button>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const precios = {
+            "Plátano": 15,
+            "Fresa": 15,
+            "Mango": 15,
+            "Coco": 15,
+            "Chocolate": 15,
+            "Nuez": 17,
+            "Pay de Limón": 17
+        };
+
+        let cantidades = {};
+        let total = 0;
+
+        function vender(sabor) {
+            if (!cantidades[sabor]) cantidades[sabor] = 0;
+            cantidades[sabor]++;
+            total += precios[sabor];
+            actualizarPantalla();
+        }
+
+        function actualizarPantalla() {
+            const resumen = document.getElementById("resumen");
+            const totalSpan = document.getElementById("total");
+            resumen.innerHTML = "";
+            for (let sabor in cantidades) {
+                if (cantidades[sabor] > 0) {
+                    resumen.innerHTML += `<li>${sabor}: ${cantidades[sabor]} x $${precios[sabor]} = $${cantidades[sabor] * precios[sabor]}</li>`;
+                }
+            }
+            totalSpan.innerText = `$${total}`;
+        }
+
+        function enviarVenta() {
+            if (Object.keys(cantidades).length === 0) {
+                alert("No has seleccionado ningún bollo.");
+                return;
+            }
+
+            fetch("/registrar_venta", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(cantidades)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.mensaje) {
+                    alert(data.mensaje);
+                    cantidades = {};
+                    total = 0;
+                    actualizarPantalla();
+                    actualizarInventario(data.inventario);
+                } else {
+                    alert("Error al registrar venta");
+                }
+            })
+            .catch(error => {
+                console.error("Error al enviar venta:", error);
+                alert("Error al registrar venta");
+            });
+        }
+
+        function actualizarInventario(nuevoInventario) {
+            const contenedor = document.getElementById("inventario");
+            contenedor.innerHTML = "";
+            for (let sabor in nuevoInventario) {
+                const cantidad = nuevoInventario[sabor];
+                let clase = "alto";
+                if (cantidad <= 3) clase = "bajo";
+                else if (cantidad <= 7) clase = "medio";
+
+                contenedor.innerHTML += `<div class="item-inventario ${clase}">${sabor}: ${cantidad}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Inicio | Sazón Carmelita</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body class="fondo-inicio">
+
+    <!-- Capa de opacidad sobre el fondo -->
+    <div class="overlay"></div>
+
+    <!-- Personajes decorativos -->
+    <img src="{{ url_for('static', filename='img/Paymelito.png') }}" class="personaje cerca arriba-izquierda" alt="Paymelito">
+    <img src="{{ url_for('static', filename='img/Fresmelita.png') }}" class="personaje cerca arriba-derecha" alt="Fresmelita">
+    <img src="{{ url_for('static', filename='img/Chocomelito.png') }}" class="personaje cerca medio-izquierda" alt="Chocomelito">
+    <img src="{{ url_for('static', filename='img/Carmeloco.png') }}" class="personaje cerca medio-derecha" alt="Carmeloco">
+    <img src="{{ url_for('static', filename='img/Platamelita.png') }}" class="personaje cerca abajo-izquierda" alt="Platamelita">
+    <img src="{{ url_for('static', filename='img/Manguelito.png') }}" class="personaje cerca abajo-derecha" alt="Manguelito">
+
+    <!-- Contenido principal -->
+    <div class="contenedor-inicio">
+        <img src="{{ url_for('static', filename='img/Logo.png') }}" alt="Logo Sazón Carmelita" class="logo-inicio">
+        <h1 class="titulo-principal">Sazón Carmelita - Barrio Pobre</h1>
+
+        <div class="menu-container">
+            <a href="/ventas"><button class="menu-button">🧁 Registrar Ventas</button></a>
+            <a href="/resumen_ventas"><button class="menu-button">📋 Resumen de Ventas</button></a>
+            <a href="/historial_ventas"><button class="menu-button">📈 Historial de Ventas</button></a>
+            <a href="/actualizar_inventario"><button class="menu-button">📦 Actualizar Inventario</button></a>
+        </div>
+    </div>
+
+</body>
+</html>

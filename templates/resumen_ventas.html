@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumen de Ventas | Sazón Carmelita</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="fondo-inicio">
+    <div class="overlay"></div>
+    <div class="contenedor-inicio">
+        <h1 class="titulo-principal">📊 Resumen de Ventas</h1>
+
+        <div class="resumen-estadisticas">
+            <div class="tarjeta-estadistica">
+                <h3>Bollos Vendidos</h3>
+                <p>{{ total_vendidos }}</p>
+            </div>
+            <div class="tarjeta-estadistica">
+                <h3>Ingresos Totales</h3>
+                <p>$ {{ total_ingresos }}</p>
+            </div>
+            <div class="tarjeta-estadistica">
+                <h3>Fecha</h3>
+                <p>{{ fecha }}</p>
+            </div>
+        </div>
+
+        <div class="seccion-secundaria">
+            <h2>🏆 Top Sabores Más Vendidos</h2>
+
+            <canvas id="graficaSabores" height="180"></canvas>
+
+            <ul style="margin-top: 20px;">
+                {% for item in top_sabores %}
+                    <li><strong>{{ item.sabor }}</strong>: {{ item.vendidos }} vendidos</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="seccion-secundaria">
+            <h2>😴 Sabores No Vendidos</h2>
+            {% if sabores_no_vendidos %}
+                <ul>
+                    {% for sabor in sabores_no_vendidos %}
+                        <li>{{ sabor }}</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>¡Todos los sabores tuvieron al menos una venta!</p>
+            {% endif %}
+        </div>
+
+        <div class="seccion-secundaria">
+            <h2>⚠️ Inventario Bajo</h2>
+            {% if inventario_bajo %}
+                <ul>
+                    {% for item in inventario_bajo %}
+                        <li>{{ item.sabor }}: {{ item.restantes }} restantes</li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No hay alertas de inventario bajo.</p>
+            {% endif %}
+        </div>
+
+        <div style="margin-top: 40px;">
+            <a href="/">
+                <button class="menu-button">🏠 Volver al Menú Principal</button>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const dataSabores = {
+            labels: {{ top_sabores_nombres|tojson }},
+            datasets: [{
+                label: 'Cantidad Vendida',
+                data: {{ top_sabores_valores|tojson }},
+                backgroundColor: [
+                    '#FFB74D', '#4DB6AC', '#BA68C8',
+                    '#F06292', '#81C784', '#FFD54F', '#90CAF9'
+                ],
+                borderRadius: 10
+            }]
+        };
+
+        const configSabores = {
+            type: 'bar',
+            data: dataSabores,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: context => `${context.parsed.y} vendidos`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    }
+                }
+            }
+        };
+
+        new Chart(document.getElementById('graficaSabores'), configSabores);
+    </script>
+</body>
+</html>

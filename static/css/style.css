@@ -432,10 +432,11 @@ table th, table td {
 /* -------------------- */
 @media screen and (max-width: 768px) {
     .personaje {
-        position: static !important;
-        display: block;
-        margin: 10px auto;
+        position: relative !important;
+        display: inline-block;
+        margin: 15px 10px;
         width: 80px;
+        opacity: 0.9;
     }
 
     .arriba-izquierda,
@@ -444,24 +445,45 @@ table th, table td {
     .medio-derecha,
     .abajo-izquierda,
     .abajo-derecha {
-        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        right: auto !important;
+        bottom: auto !important;
     }
 
     .logo-inicio {
-        width: 160px;
+        width: 140px;
     }
 
     .titulo-principal {
-        font-size: 24px;
-        padding: 0 10px;
+        font-size: 20px;
+        margin: 15px 0;
+        padding: 0 12px;
     }
 
     .menu-container {
-        gap: 15px;
+        gap: 12px;
+        padding: 0 10px;
     }
 
     .menu-button {
-        font-size: 18px;
-        padding: 12px 24px;
+        font-size: 16px;
+        padding: 12px;
+        max-width: 90%;
+    }
+
+    .resumen-estadisticas {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .tarjeta-estadistica {
+        width: 90%;
+        min-width: auto;
+    }
+
+    .seccion-secundaria {
+        padding: 20px;
+        width: 90%;
     }
 }

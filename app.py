@@ -357,6 +357,7 @@ def actualizar_inventario():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
-        registrar_inventario_inicial()
+        if os.environ.get("RENDER") == "true":
+            db.create_all()
+            registrar_inventario_inicial()
     app.run(debug=True)

@@ -6,9 +6,16 @@ import webbrowser
 import threading
 from uuid import uuid4
 from collections import defaultdict
+import os
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bollos.db'
+# Detectar si está corriendo en Render
+if os.environ.get('RENDER', '').lower() == 'true':
+    # Conexión en línea (Render)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://bollos_db_user:tflh1x1YH3bepUYhEfLAHNK1V3LUgQIu@dpg-d0naalpr0fns738q6h30-a.oregon-postgres.render.com/bollos_db'
+else:
+    # Conexión local
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bollos.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)

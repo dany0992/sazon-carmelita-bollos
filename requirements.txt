@@ -37,3 +37,4 @@ WTForms==3.2.1
 XlsxWriter==3.2.2
 zopfli==0.2.3.post1
 gunicorn
+psycopg2-binary

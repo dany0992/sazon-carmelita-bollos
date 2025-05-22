@@ -355,13 +355,6 @@ def actualizar_inventario():
     }
     return render_template('actualizar_inventario.html', sabores=sabores, inventario=inventario, mensaje=mensaje)
 
-@app.route('/ejecutar_tablas')
-def ejecutar_tablas():
-    with app.app_context():
-        db.create_all()
-        registrar_inventario_inicial()
-    return "✅ Tablas creadas correctamente en Render."
-
 if __name__ == '__main__':
     with app.app_context():
         if os.environ.get('RENDER') == 'true':

@@ -1,6 +1,6 @@
-from models import db
-from app import app
+from app import db
+from app import registrar_inventario_inicial
 
-with app.app_context():
-    db.create_all()
-    print("✅ Tablas creadas correctamente.")
+db.create_all()
+registrar_inventario_inicial()
+print("✅ Tablas creadas correctamente en la base de datos.")

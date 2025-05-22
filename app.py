@@ -357,8 +357,12 @@ def actualizar_inventario():
 
 if __name__ == '__main__':
     with app.app_context():
-        if os.environ.get('RENDER', '').lower() == 'true':
-            # Crea las tablas y llena el inventario solo en Render
-            db.create_all()
-            registrar_inventario_inicial()
-    app.run(debug=os.environ.get('RENDER', '').lower() != 'true')
+        if os.environ.get('RENDER') == 'true':
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            tablas_existentes = inspector.get_table_names()
+            if not tablas_existentes:
+                db.create_all()
+                registrar_inventario_inicial()
+                print("✅ Tablas creadas automáticamente en Render.")
+    app.run(debug=True)

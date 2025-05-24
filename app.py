@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
 from models import db, InventarioBollos, VentasBollos, CorteDia
 from datetime import datetime, date
 from sqlalchemy import func
@@ -7,6 +7,7 @@ import threading
 from uuid import uuid4
 from collections import defaultdict
 import os
+import subprocess
 
 app = Flask(__name__)
 # Detectar si está corriendo en Render
@@ -15,7 +16,7 @@ if os.environ.get('RENDER', '').lower() == 'true':
     app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://bollos_db_user:tflh1x1YH3bepUYhEfLAHNK1V3LUgQIu@dpg-d0naalpr0fns738q6h30-a.oregon-postgres.render.com/bollos_db'
 else:
     # Conexión local
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///bollos.db'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://bollos_db_user:tflh1x1YH3bepUYhEfLAHNK1V3LUgQIu@dpg-d0naalpr0fns738q6h30-a.oregon-postgres.render.com/bollos_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -354,6 +355,25 @@ def actualizar_inventario():
         for item in InventarioBollos.query.filter_by(vendedora=vendedora).all()
     }
     return render_template('actualizar_inventario.html', sabores=sabores, inventario=inventario, mensaje=mensaje)
+
+@app.route('/respaldo_db')
+def respaldo_db():
+    if os.environ.get('RENDER', '').lower() == 'true':
+        # Ruta para PostgreSQL (Render)
+        archivo = "/tmp/respaldo_bollos.sql"
+        comando = [
+            "pg_dump",
+            "--dbname=" + app.config['SQLALCHEMY_DATABASE_URI'],
+            "--file=" + archivo
+        ]
+        try:
+            subprocess.run(comando, check=True)
+            return send_file(archivo, as_attachment=True)
+        except Exception as e:
+            return f"❌ Error al respaldar la base de datos en Render: {e}", 500
+    else:
+        # Ruta para SQLite (local)
+        return send_file("bollos.db", as_attachment=True)
 
 if __name__ == '__main__':
     with app.app_context():

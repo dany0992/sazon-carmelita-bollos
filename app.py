@@ -333,36 +333,70 @@ def registrar_inventario_inicial():
             db.session.add(nuevo)
     db.session.commit()
 
-@app.route('/actualizar_inventario', methods=['GET', 'POST'])
-def actualizar_inventario():
+@app.route('/inventario', methods=['GET', 'POST'])
+def inventario():
     vendedora = "Mary"
     mensaje = None
     sabores = ["Plátano", "Fresa", "Mango", "Coco", "Chocolate", "Nuez", "Pay de Limón"]
 
     if request.method == 'POST':
         for sabor in sabores:
-            cantidad = request.form.get(sabor)
-            if cantidad is not None:
-                cantidad = int(cantidad)
+            cantidad_nueva = request.form.get(sabor)
+            if cantidad_nueva is not None:
+                cantidad_nueva = int(cantidad_nueva)
                 item = InventarioBollos.query.filter_by(vendedora=vendedora, sabor=sabor).first()
+
                 if item:
-                    item.cantidad_actual = cantidad
+                    diferencia = cantidad_nueva - item.cantidad_actual
+                    if diferencia != 0:
+                        # Registrar ajuste en el historial
+                        movimiento = MovimientosInventario(
+                            vendedora=vendedora,
+                            sabor=sabor,
+                            tipo='ajuste',
+                            cantidad=abs(diferencia),
+                            motivo=f"Ajuste manual: de {item.cantidad_actual} a {cantidad_nueva}"
+                        )
+                        db.session.add(movimiento)
+
+                        # Actualizar inventario
+                        item.cantidad_actual = cantidad_nueva
                 else:
-                    item = InventarioBollos(
+                    # Nuevo sabor en inventario
+                    nuevo = InventarioBollos(
                         vendedora=vendedora,
                         sabor=sabor,
-                        cantidad_actual=cantidad,
+                        cantidad_actual=cantidad_nueva,
                         fecha_asignacion=date.today()
                     )
-                    db.session.add(item)
+                    db.session.add(nuevo)
+
+                    movimiento = MovimientosInventario(
+                        vendedora=vendedora,
+                        sabor=sabor,
+                        tipo='ajuste',
+                        cantidad=cantidad_nueva,
+                        motivo="Nuevo sabor agregado al inventario"
+                    )
+                    db.session.add(movimiento)
+
         db.session.commit()
-        mensaje = "Inventario actualizado correctamente."
+        mensaje = "✅ Inventario actualizado correctamente."
 
     inventario = {
         item.sabor: item.cantidad_actual
         for item in InventarioBollos.query.filter_by(vendedora=vendedora).all()
     }
-    return render_template('actualizar_inventario.html', sabores=sabores, inventario=inventario, mensaje=mensaje)
+
+    historial = MovimientosInventario.query.filter_by(vendedora=vendedora).order_by(MovimientosInventario.fecha_movimiento.desc()).all()
+
+    return render_template(
+        'inventario.html',
+        sabores=sabores,
+        inventario=inventario,
+        historial=historial,
+        mensaje=mensaje
+    )
 
 @app.route('/respaldo_db')
 def respaldo_db():

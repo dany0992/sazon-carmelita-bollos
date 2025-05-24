@@ -2,13 +2,32 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Actualizar Inventario | Sazón Carmelita</title>
+    <title>Inventario | Sazón Carmelita</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+        th {
+            background-color: #ff6f3c;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
 </head>
 <body class="actualizar-inventario-body">
     <div class="contenedor-formulario">
-        <h1>📦 Actualizar Inventario</h1>
+        <h1>📦 Inventario</h1>
 
         {% if mensaje %}
             <div class="mensaje-confirmacion">
@@ -24,6 +43,30 @@
 
             <button type="submit" class="menu-button">✅ Guardar Cambios</button>
         </form>
+
+        <h2 style="margin-top: 40px;">📋 Historial de Movimientos</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Sabor</th>
+                    <th>Tipo</th>
+                    <th>Cantidad</th>
+                    <th>Motivo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mov in historial %}
+                    <tr>
+                        <td>{{ mov.fecha_movimiento.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ mov.sabor }}</td>
+                        <td>{{ mov.tipo.capitalize() }}</td>
+                        <td>{{ mov.cantidad }}</td>
+                        <td>{{ mov.motivo or '' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
         <div class="volver">
             <a href="/">🏠 Volver al Menú Principal</a>

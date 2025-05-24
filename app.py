@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
-from models import db, InventarioBollos, VentasBollos, CorteDia
+from models import db, InventarioBollos, VentasBollos, MovimientoInventario
 from datetime import datetime, date
 from sqlalchemy import func
 import webbrowser
@@ -96,6 +96,14 @@ def registrar_venta():
                 item = InventarioBollos.query.filter_by(vendedora=vendedora, sabor=sabor).first()
                 if item and item.cantidad_actual > 0:
                     item.cantidad_actual -= 1
+                    movimiento = MovimientoInventario(
+                        vendedora=vendedora,
+                        sabor=sabor,
+                        tipo='salida',
+                        cantidad=1,
+                        motivo='Venta AJAX'
+                    )
+                    db.session.add(movimiento)
 
         db.session.commit()
 

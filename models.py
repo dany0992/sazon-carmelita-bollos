@@ -33,7 +33,7 @@ class VentasBollos(db.Model):
 # 📋 Historial completo de movimientos de inventario
 # -----------------------------
 # 📋 Historial completo de movimientos de inventario
-class MovimientoInventario(db.Model):
+class MovimientosInventario(db.Model):
     __tablename__ = 'movimientos_inventario'
 
     id = Column(Integer, primary_key=True)

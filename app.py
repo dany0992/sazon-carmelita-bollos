@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
-from models import db, InventarioBollos, VentasBollos, MovimientoInventario
+from models import db, InventarioBollos, VentasBollos, MovimientosInventario
 from datetime import datetime, date
 from sqlalchemy import func
 import webbrowser

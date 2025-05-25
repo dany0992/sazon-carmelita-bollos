@@ -373,4 +373,58 @@ body.fondo-inicio::before {
     .tarjeta-venta p {
         font-size: 14px;
     }
+
+    .boton-venta {
+    font-size: 20px;
+    padding: 16px 30px;
+    }
+
+    .boton-volver {
+    font-size: 18px;
+    padding: 14px 28px;
+    }
+}
+
+/* -------------------- */
+/* BOTÓN FINALIZAR VENTA */
+/* -------------------- */
+.boton-venta {
+    background-color: #ff7043;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    padding: 18px 36px;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    margin-top: 25px;
+    transition: transform 0.2s ease, background-color 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.boton-venta:hover {
+    background-color: #e64a19;
+    transform: scale(1.05);
+}
+
+/* -------------------- */
+/* BOTÓN VOLVER AL MENÚ */
+/* -------------------- */
+.boton-volver {
+    display: inline-block;
+    background-color: #ffe0b2;
+    color: #5d4037;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 16px 32px;
+    border-radius: 14px;
+    text-decoration: none;
+    margin-top: 30px;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.boton-volver:hover {
+    background-color: #ffcc80;
+    transform: scale(1.05);
 }

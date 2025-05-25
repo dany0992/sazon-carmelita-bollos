@@ -3,48 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <title>Registro de Ventas | Sazón Carmelita</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
 </head>
-<body class="fondo-inicio">
-    <div class="overlay"></div>
-    <div class="contenedor-inicio">
-        <h1 class="titulo-principal">¿Qué vendiste hoy?</h1>
+<body class="ventas-body">
+    <div class="contenedor-ventas">
+        <h1 class="titulo-ventas">¿Qué vendiste hoy?</h1>
 
         <div class="grid-personajes">
             {% for sabor, imagen in personajes.items() %}
             <div class="tarjeta-venta" onclick="vender('{{ sabor }}')">
                 <img src="{{ url_for('static', filename='img/' + imagen) }}" alt="{{ sabor }}">
                 <h3>{{ sabor }}</h3>
-                <p>${{ precios[sabor] }}</p>
+                <p class="precio-bollo">${{ precios[sabor] }}</p>
             </div>
             {% endfor %}
         </div>
 
-        <hr style="margin: 30px 0;">
+        <section class="resumen-venta">
+            <h2>Total a cobrar: <span id="total">$0</span></h2>
+            <ul id="resumen" class="lista-resumen"></ul>
+            <button class="boton-finalizar" onclick="enviarVenta()">✅ Finalizar venta</button>
+        </section>
 
-        <h2>Total a cobrar: <span id="total">$0</span></h2>
-        <ul id="resumen"></ul>
+        <section class="inventario-disponible">
+            <h2>📦 Inventario disponible</h2>
+            <div id="inventario" class="grid-inventario">
+                {% for sabor, cantidad in inventario.items() %}
+                    {% set clase = 'alto' %}
+                    {% if cantidad <= 3 %}
+                        {% set clase = 'bajo' %}
+                    {% elif cantidad <= 7 %}
+                        {% set clase = 'medio' %}
+                    {% endif %}
+                    <div class="item-inventario {{ clase }}">{{ sabor }}: {{ cantidad }}</div>
+                {% endfor %}
+            </div>
+        </section>
 
-        <button class="menu-button" onclick="enviarVenta()">✅ Finalizar venta</button>
-
-        <hr style="margin: 40px 0;">
-        <h2>📦 Inventario disponible</h2>
-        <div id="inventario">
-            {% for sabor, cantidad in inventario.items() %}
-                {% set clase = 'alto' %}
-                {% if cantidad <= 3 %}
-                    {% set clase = 'bajo' %}
-                {% elif cantidad <= 7 %}
-                    {% set clase = 'medio' %}
-                {% endif %}
-                <div class="item-inventario {{ clase }}">{{ sabor }}: {{ cantidad }}</div>
-            {% endfor %}
-        </div>
-
-        <div style="margin-top: 30px;">
+        <div class="volver">
             <a href="/">
-                <button class="menu-button">🏠 Volver al Menú Principal</button>
+                <button class="boton-volver">🏠 Volver al Menú Principal</button>
             </a>
         </div>
     </div>

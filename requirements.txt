@@ -39,3 +39,4 @@ zopfli==0.2.3.post1
 gunicorn
 psycopg2-binary
 fpdf==1.7.2
+xhtml2pdf==0.2.10

@@ -561,7 +561,6 @@ def exportar_ganancias_pdf():
 
 @app.route('/exportar_resumen_ventas_pdf')
 def exportar_resumen_ventas_pdf():
-    # Obtener los datos del resumen semanal (mismos que envías a resumen_ventas.html)
     vendedora = "Mary"
     hoy = date.today()
     lunes = hoy - timedelta(days=hoy.weekday())
@@ -580,6 +579,8 @@ def exportar_resumen_ventas_pdf():
     resumen = []
     total_vendidos = 0
     total_ingresos = 0
+    sabores_no_vendidos = []
+    inventario_bajo = []
 
     for s in sabores:
         nombre = s["nombre"]
@@ -602,15 +603,41 @@ def exportar_resumen_ventas_pdf():
             "ingresos": ingresos
         })
 
-    # Renderizar plantilla HTML
+        if vendidos == 0:
+            sabores_no_vendidos.append(nombre)
+
+        inventario = InventarioBollos.query.filter_by(vendedora=vendedora, sabor=nombre).first()
+        cantidad = inventario.cantidad_actual if inventario else 0
+        if cantidad <= 3:
+            inventario_bajo.append({"sabor": nombre, "restantes": cantidad})
+
+    # Historial
+    historial_raw = DistribucionGanancias.query.order_by(DistribucionGanancias.fecha_distribucion).all()
+    historial_semanal = []
+    for h in historial_raw:
+        inicio_semana = h.fecha_distribucion - timedelta(days=h.fecha_distribucion.weekday())
+        fin_semana = inicio_semana + timedelta(days=6)
+        historial_semanal.append({
+            "rango": f"{inicio_semana.strftime('%d/%m/%Y')} - {fin_semana.strftime('%d/%m/%Y')}",
+            "vendidos": h.total_ventas // 15,  # aproximado
+            "ingresos": h.total_ventas,
+            "carmen": h.monto_carmen,
+            "mary": h.monto_mary,
+            "banco": h.monto_banco
+        })
+
     html = render_template("resumen_ventas_pdf.html",
                            resumen=resumen,
                            total_vendidos=total_vendidos,
                            total_ingresos=total_ingresos,
-                           fecha=f"{lunes.strftime('%d/%m/%Y')} - {domingo.strftime('%d/%m/%Y')}"
-                           )
+                           fecha=f"{lunes.strftime('%d/%m/%Y')} - {domingo.strftime('%d/%m/%Y')}",
+                           top_sabores=sorted(resumen, key=lambda x: x['vendidos'], reverse=True)[:5],
+                           sabores_no_vendidos=sabores_no_vendidos,
+                           inventario_bajo=inventario_bajo,
+                           historial_semanal=historial_semanal
+    )
 
-    # Generar PDF desde HTML
+    # Convertir HTML a PDF
     result = io.BytesIO()
     pisa_status = pisa.CreatePDF(io.StringIO(html), dest=result)
 
@@ -622,18 +649,14 @@ def exportar_resumen_ventas_pdf():
     response.headers['Content-Disposition'] = 'attachment; filename=resumen_ventas.pdf'
     return response
 
-
 if __name__ == '__main__':
     with app.app_context():
         if os.environ.get('RENDER') == 'true':
             from sqlalchemy import inspect
-
             inspector = inspect(db.engine)
             tablas_existentes = inspector.get_table_names()
             if not tablas_existentes:
                 db.create_all()
                 registrar_inventario_inicial()
                 print("✅ Tablas creadas automáticamente en Render.")
-
-    # 👉 Esto es lo que Render necesita para detectar que tu app está corriendo
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True)

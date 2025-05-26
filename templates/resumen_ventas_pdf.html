@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Resumen de Ventas - PDF | Sazón Carmelita</title>
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: white;
+            color: #333;
+            padding: 40px;
+            max-width: 900px;
+            margin: auto;
+        }
+        h1, h2 {
+            color: #a0522d;
+            text-align: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #ffe6d6;
+        }
+        .seccion {
+            margin-top: 40px;
+        }
+        .info {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        li {
+            padding: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Resumen de Ventas Semanal</h1>
+    <div class="info">
+        <strong>Semana:</strong> {{ fecha }}<br>
+        <strong>Bollos Vendidos:</strong> {{ total_vendidos }}<br>
+        <strong>Ingresos Totales:</strong> ${{ total_ingresos }}
+    </div>
+
+    <div class="seccion">
+        <h2>Top Sabores Más Vendidos</h2>
+        <ul>
+            {% for item in top_sabores %}
+                <li><strong>{{ item.sabor }}</strong>: {{ item.vendidos }} vendidos</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="seccion">
+        <h2>Sabores No Vendidos</h2>
+        {% if sabores_no_vendidos %}
+            <ul>
+                {% for sabor in sabores_no_vendidos %}
+                    <li>{{ sabor }}</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>¡Todos los sabores tuvieron ventas!</p>
+        {% endif %}
+    </div>
+
+    <div class="seccion">
+        <h2>Inventario Bajo</h2>
+        {% if inventario_bajo %}
+            <ul>
+                {% for item in inventario_bajo %}
+                    <li>{{ item.sabor }}: {{ item.restantes }} restantes</li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No hay alertas de inventario bajo.</p>
+        {% endif %}
+    </div>
+
+    <div class="seccion">
+        <h2>Historial de Ventas Acumuladas</h2>
+        {% if historial_semanal %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Semana</th>
+                    <th>Bollos Vendidos</th>
+                    <th>Ingresos</th>
+                    <th>Carmen</th>
+                    <th>Mary</th>
+                    <th>Banco</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for semana in historial_semanal %}
+                <tr>
+                    <td>{{ semana.rango }}</td>
+                    <td>{{ semana.vendidos }}</td>
+                    <td>${{ semana.ingresos }}</td>
+                    <td>${{ semana.carmen }}</td>
+                    <td>${{ semana.mary }}</td>
+                    <td>${{ semana.banco }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>No hay historial acumulado aún.</p>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,6 +1,6 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
+from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, make_response
 from models import db, InventarioBollos, VentasBollos, MovimientosInventario, DistribucionGanancias
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy import func, case, and_
 import webbrowser
 import threading
@@ -10,7 +10,8 @@ import os
 import subprocess
 from fpdf import FPDF
 from io import BytesIO
-
+from xhtml2pdf import pisa
+import io
 
 app = Flask(__name__)
 # Detectar si está corriendo en Render
@@ -127,6 +128,7 @@ def registrar_venta():
 # ------------------------------
 @app.route('/resumen_ventas')
 def resumen_ventas():
+    from datetime import timedelta
     vendedora = "Mary"
     hoy = date.today()
 
@@ -140,10 +142,14 @@ def resumen_ventas():
         {"nombre": "Pay de Limón", "precio": 17},
     ]
 
+    # Semana actual
+    lunes = hoy - timedelta(days=hoy.weekday())
+    domingo = lunes + timedelta(days=6)
+
     resumen = []
     total_vendidos = 0
     total_ingresos = 0
-    top_sabores = []
+    ventas_por_sabor = {}
     sabores_sin_ventas = []
     sabores_bajo_inventario = []
 
@@ -154,12 +160,14 @@ def resumen_ventas():
         vendidos = db.session.query(func.count(VentasBollos.id)).filter(
             VentasBollos.vendedora == vendedora,
             VentasBollos.sabor == nombre,
-            func.date(VentasBollos.fecha_venta) == hoy
-        ).scalar()
+            func.date(VentasBollos.fecha_venta).between(lunes, domingo)
+        ).scalar() or 0
 
         ingresos = vendidos * precio
         total_vendidos += vendidos
         total_ingresos += ingresos
+
+        ventas_por_sabor[nombre] = vendidos
 
         inventario = InventarioBollos.query.filter_by(vendedora=vendedora, sabor=nombre).first()
         cantidad_restante = inventario.cantidad_actual if inventario else 0
@@ -181,17 +189,37 @@ def resumen_ventas():
             "restantes": cantidad_restante
         })
 
-    # Top 3 sabores más vendidos
     resumen_ordenado = sorted(resumen, key=lambda x: x["vendidos"], reverse=True)
-    top_sabores = resumen_ordenado[:3]
+    top_sabores = resumen_ordenado[:5]
 
-    # Datos para la gráfica
     top_sabores_nombres = [s["sabor"] for s in top_sabores]
     top_sabores_valores = [s["vendidos"] for s in top_sabores]
 
+    # Historial acumulado
+    historial = db.session.query(VentasBollos).filter_by(vendedora=vendedora).all()
+    ventas_historial = {}
+    for v in historial:
+        fecha = v.fecha_venta.date()
+        semana = (fecha - timedelta(days=fecha.weekday()), fecha + timedelta(days=(6 - fecha.weekday())))
+        if semana not in ventas_historial:
+            ventas_historial[semana] = {"total": 0, "detalles": {}}
+        ventas_historial[semana]["total"] += 17 if v.sabor in ["Nuez", "Pay de Limón"] else 15
+        if v.sabor not in ventas_historial[semana]["detalles"]:
+            ventas_historial[semana]["detalles"][v.sabor] = 0
+        ventas_historial[semana]["detalles"][v.sabor] += 1
+
+    historial_resumen = []
+    for semana, data in sorted(ventas_historial.items(), key=lambda x: x[0], reverse=True):
+        inicio, fin = semana
+        historial_resumen.append({
+            "semana": f"{inicio.strftime('%d/%m/%Y')} - {fin.strftime('%d/%m/%Y')}",
+            "total": data["total"],
+            "detalles": data["detalles"]
+        })
+
     return render_template(
         'resumen_ventas.html',
-        fecha=hoy.strftime('%d/%m/%Y'),
+        fecha=f"{lunes.strftime('%d/%m/%Y')} - {domingo.strftime('%d/%m/%Y')}",
         vendedora=vendedora,
         total_vendidos=total_vendidos,
         total_ingresos=total_ingresos,
@@ -200,7 +228,8 @@ def resumen_ventas():
         sabores_no_vendidos=sabores_sin_ventas,
         inventario_bajo=sabores_bajo_inventario,
         top_sabores_nombres=top_sabores_nombres,
-        top_sabores_valores=top_sabores_valores
+        top_sabores_valores=top_sabores_valores,
+        historial_resumen=historial_resumen
     )
 
 # ------------------------------
@@ -529,6 +558,69 @@ def exportar_ganancias_pdf():
 
     fecha_actual = datetime.now().strftime('%Y-%m-%d')
     return send_file(buffer, as_attachment=True, download_name=f"distribucion_ganancias_{fecha_actual}.pdf", mimetype='application/pdf')
+
+@app.route('/exportar_resumen_ventas_pdf')
+def exportar_resumen_ventas_pdf():
+    # Obtener los datos del resumen semanal (mismos que envías a resumen_ventas.html)
+    vendedora = "Mary"
+    hoy = date.today()
+    lunes = hoy - timedelta(days=hoy.weekday())
+    domingo = lunes + timedelta(days=6)
+
+    sabores = [
+        {"nombre": "Plátano", "precio": 15},
+        {"nombre": "Fresa", "precio": 15},
+        {"nombre": "Mango", "precio": 15},
+        {"nombre": "Coco", "precio": 15},
+        {"nombre": "Chocolate", "precio": 15},
+        {"nombre": "Nuez", "precio": 17},
+        {"nombre": "Pay de Limón", "precio": 17},
+    ]
+
+    resumen = []
+    total_vendidos = 0
+    total_ingresos = 0
+
+    for s in sabores:
+        nombre = s["nombre"]
+        precio = s["precio"]
+
+        vendidos = db.session.query(func.count(VentasBollos.id)).filter(
+            VentasBollos.vendedora == vendedora,
+            VentasBollos.sabor == nombre,
+            func.date(VentasBollos.fecha_venta).between(lunes, domingo)
+        ).scalar() or 0
+
+        ingresos = vendidos * precio
+        total_vendidos += vendidos
+        total_ingresos += ingresos
+
+        resumen.append({
+            "sabor": nombre,
+            "vendidos": vendidos,
+            "precio": precio,
+            "ingresos": ingresos
+        })
+
+    # Renderizar plantilla HTML
+    html = render_template("resumen_ventas_pdf.html",
+                           resumen=resumen,
+                           total_vendidos=total_vendidos,
+                           total_ingresos=total_ingresos,
+                           fecha=f"{lunes.strftime('%d/%m/%Y')} - {domingo.strftime('%d/%m/%Y')}"
+                           )
+
+    # Generar PDF desde HTML
+    result = io.BytesIO()
+    pisa_status = pisa.CreatePDF(io.StringIO(html), dest=result)
+
+    if pisa_status.err:
+        return "❌ Error al generar el PDF", 500
+
+    response = make_response(result.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=resumen_ventas.pdf'
+    return response
 
 if __name__ == '__main__':
     with app.app_context():

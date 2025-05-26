@@ -22,17 +22,15 @@
                 <p>$ {{ total_ingresos }}</p>
             </div>
             <div class="tarjeta-estadistica">
-                <h3>Fecha</h3>
+                <h3>Semana</h3>
                 <p>{{ fecha }}</p>
             </div>
         </div>
 
         <div class="seccion-secundaria">
             <h2>🏆 Top Sabores Más Vendidos</h2>
-
             <canvas id="graficaSabores" height="180"></canvas>
-
-            <ul style="margin-top: 20px;">
+            <ul class="lista-sabores">
                 {% for item in top_sabores %}
                     <li><strong>{{ item.sabor }}</strong>: {{ item.vendidos }} vendidos</li>
                 {% endfor %}
@@ -42,7 +40,7 @@
         <div class="seccion-secundaria">
             <h2>😴 Sabores No Vendidos</h2>
             {% if sabores_no_vendidos %}
-                <ul>
+                <ul class="lista-simple">
                     {% for sabor in sabores_no_vendidos %}
                         <li>{{ sabor }}</li>
                     {% endfor %}
@@ -55,7 +53,7 @@
         <div class="seccion-secundaria">
             <h2>⚠️ Inventario Bajo</h2>
             {% if inventario_bajo %}
-                <ul>
+                <ul class="lista-simple">
                     {% for item in inventario_bajo %}
                         <li>{{ item.sabor }}: {{ item.restantes }} restantes</li>
                     {% endfor %}
@@ -65,7 +63,62 @@
             {% endif %}
         </div>
 
-        <div style="margin-top: 40px;">
+        <div class="seccion-secundaria">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+            <a href="/exportar_resumen_ventas_pdf" target="_blank"><button class="menu-button" style="background-color: #2980b9; padding: 10px 20px; font-size: 14px;">
+            📄 Descargar Resumen en PDF
+        </button></a>
+        </div>
+            <h2 style="display: flex; justify-content: space-between; align-items: center;">
+                📜 Historial de Ventas Acumuladas
+                <button onclick="toggleHistorial()" class="menu-button" style="font-size: 14px; padding: 6px 14px; background-color: #b56e00;">👁️ Mostrar/Ocultar</button>
+            </h2>
+            <div id="historialVentasContainer">
+                {% if historial_semanal %}
+                <form method="POST" action="/exportar_resumen_pdf" target="_blank" id="formExportPDF">
+                    <input type="hidden" name="ids" id="selectedIdsResumen">
+                    <div style="text-align: right; margin-bottom: 10px;">
+                        <button type="submit" class="menu-button" style="background-color: #2980b9; font-size: 14px; padding: 8px 18px;">📄 Descargar PDF</button>
+                    </div>
+                <div style="overflow-x: auto;">
+                    <table class="tabla-historial">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="checkAllHistorial"></th>
+                                <th>Semana</th>
+                                <th>Bollos Vendidos</th>
+                                <th>Ingresos</th>
+                                <th>Carmen</th>
+                                <th>Mary</th>
+                                <th>Banco</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for semana in historial_semanal %}
+                            <tr>
+                                <td><input type="checkbox" class="rowHistorialCheck" data-total="{{ semana.ingresos }}" value="{{ semana.rango }}"></td>
+                                <td>{{ semana.rango }}</td>
+                                <td>{{ semana.vendidos }}</td>
+                                <td>${{ semana.ingresos }}</td>
+                                <td>${{ semana.carmen }}</td>
+                                <td>${{ semana.mary }}</td>
+                                <td>${{ semana.banco }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    <div style="text-align: right; font-weight: bold; margin-top: 10px;">
+                        Total seleccionado: <span id="totalHistorialSeleccionado">$0.00</span>
+                    </div>
+                </div>
+                </form>
+                {% else %}
+                    <p>No hay registros históricos aún.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="volver">
             <a href="/">
                 <button class="menu-button">🏠 Volver al Menú Principal</button>
             </a>
@@ -109,6 +162,31 @@
         };
 
         new Chart(document.getElementById('graficaSabores'), configSabores);
+
+        function toggleHistorial() {
+            const cont = document.getElementById("historialVentasContainer");
+            cont.style.display = cont.style.display === "none" ? "block" : "none";
+        }
+
+        function calcularTotalHistorialSeleccionado() {
+            let total = 0;
+            let ids = [];
+            document.querySelectorAll('.rowHistorialCheck:checked').forEach(cb => {
+                total += parseFloat(cb.dataset.total || 0);
+                ids.push(cb.value);
+            });
+            document.getElementById('totalHistorialSeleccionado').innerText = `$${total.toFixed(2)}`;
+            document.getElementById('selectedIdsResumen').value = ids.join(',');
+        }
+
+        document.getElementById('checkAllHistorial')?.addEventListener('change', function () {
+            document.querySelectorAll('.rowHistorialCheck').forEach(cb => cb.checked = this.checked);
+            calcularTotalHistorialSeleccionado();
+        });
+
+        document.querySelectorAll('.rowHistorialCheck').forEach(cb =>
+            cb.addEventListener('change', calcularTotalHistorialSeleccionado)
+        );
     </script>
 </body>
 </html>

@@ -43,3 +43,19 @@ class MovimientosInventario(db.Model):
     cantidad = Column(Integer, nullable=False)
     motivo = Column(String(200), nullable=True)
     fecha_movimiento = Column(DateTime, default=datetime.utcnow)
+
+class DistribucionGanancias(db.Model):
+    __tablename__ = 'distribucion_ganancias'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fecha_distribucion = db.Column(db.Date, nullable=False)
+    total_ventas = db.Column(db.Float, nullable=False)
+    porcentaje_banco = db.Column(db.Float, nullable=False)
+    monto_banco = db.Column(db.Float, nullable=False)
+    total_divisible = db.Column(db.Float, nullable=False)
+    monto_carmen = db.Column(db.Float, nullable=False)
+    monto_mary = db.Column(db.Float, nullable=False)
+    observaciones = db.Column(db.String(255), nullable=True)
+
+    def __repr__(self):
+        return f"<Distribucion {self.fecha_distribucion} - Total: ${self.total_ventas}>"

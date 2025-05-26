@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>División de Ganancias | Sazón Carmelita</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body class="fondo-inicio">
+    <div class="overlay"></div>
+    <div class="contenedor-inicio">
+        <h1 style="margin-bottom: 30px;">💰 <span style="color:#a0522d">División de Ganancias</span></h1>
+
+        {% if mensaje %}
+            <div class="mensaje-confirmacion">{{ mensaje }}</div>
+        {% endif %}
+
+        <form method="POST" class="contenedor-formulario">
+            <label for="porcentaje_banco">Porcentaje de banco de cambio a conservar (%):</label>
+            <input type="number" name="porcentaje_banco" id="porcentaje_banco" value="{{ porcentaje_banco }}" min="0" max="100" required>
+
+            <label for="observaciones">Observaciones (opcional):</label>
+            <textarea name="observaciones" id="observaciones" rows="3" placeholder="Escribe alguna nota si deseas..." style="width: 100%; border-radius: 10px; padding: 10px;"></textarea>
+
+            <button class="menu-button" type="submit">✅ Realizar División</button>
+        </form>
+
+        <hr style="margin: 40px 0; border-color: #ffd6c3;">
+
+        <h2 style="color:#a0522d; margin-bottom: 10px;">📜 Historial de Distribuciones</h2>
+
+        <div style="text-align: center; margin-bottom: 15px;">
+            <button class="menu-button" type="button" onclick="toggleHistorial()">📂 Mostrar / Ocultar Historial</button>
+        </div>
+
+        <div id="historialContainer" style="display: none;">
+        <!-- FILTROS -->
+        <form method="GET" style="background: rgba(255,255,255,0.9); padding: 15px 20px; border-radius: 12px; margin-bottom: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <div>
+                <label for="desde"><strong>Desde:</strong></label><br>
+                <input type="date" id="desde" name="desde" value="{{ request.args.get('desde', '') }}">
+            </div>
+            <div>
+                <label for="hasta"><strong>Hasta:</strong></label><br>
+                <input type="date" id="hasta" name="hasta" value="{{ request.args.get('hasta', '') }}">
+            </div>
+            <div style="flex-grow: 1;">
+                <label for="buscar"><strong>Buscar observación:</strong></label><br>
+                <input type="text" id="buscar" name="buscar" placeholder="Ej: reinversión, cierre, etc." value="{{ request.args.get('buscar', '') }}" style="width: 100%;">
+            </div>
+            <div>
+                <button type="submit" class="menu-button" style="padding: 10px 20px; font-size: 14px;">🔍 Aplicar Filtros</button>
+            </div>
+            <div>
+                <a href="/ganancias"><button type="button" class="menu-button" style="background-color: #777; font-size: 14px;">🧹 Limpiar</button></a>
+            </div>
+        </div>
+        </form>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+            <div style="font-size: 16px; font-weight: bold;">
+                Total seleccionado: <span id="totalSeleccionado">$0.00</span>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label style="display: flex; align-items: center; font-size: 14px;">
+                    <input type="checkbox" id="checkAll" style="margin-right: 6px;"> Seleccionar Todos
+                </label>
+                <form id="pdfForm" method="POST" action="/exportar_ganancias_pdf" target="_blank">
+                    <input type="hidden" name="ids" id="selectedIds">
+                    <button class="menu-button" type="submit" style="font-size: 14px; padding: 8px 18px; background-color: #2980b9;">📄 Descargar PDF</button>
+                </form>
+            </div>
+        </div>
+
+        {% if historial %}
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; background: rgba(255,255,255,0.95); border-radius: 12px; box-shadow: 0 0 8px rgba(0,0,0,0.05);">
+                <thead style="background-color: #ffe6d6;">
+                    <tr>
+                        <th><input type="checkbox" id="checkAllTop"></th>
+                        <th>Fecha</th>
+                        <th>Total Ventas</th>
+                        <th>Banco</th>
+                        <th>A Dividir</th>
+                        <th>Carmen</th>
+                        <th>Mary</th>
+                        <th>Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in historial %}
+                    <tr>
+                        <td><input type="checkbox" class="rowCheck" data-total="{{ d.total_ventas }}" value="{{ d.id }}"></td>
+                        <td>{{ d.fecha_distribucion.strftime('%d/%m/%Y') }}</td>
+                        <td>${{ d.total_ventas }}</td>
+                        <td>${{ d.monto_banco }}</td>
+                        <td>${{ d.monto_a_dividir }}</td>
+                        <td>${{ d.monto_carmen }}</td>
+                        <td>${{ d.monto_mary }}</td>
+                        <td>{{ d.observaciones or '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+            <p style="margin-top: 20px;">Aún no se ha realizado ninguna distribución.</p>
+        {% endif %}
+        </div>
+
+        <div class="volver" style="margin-top: 40px;">
+            <a href="/"><button class="menu-button">🏠 Volver al Menú Principal</button></a>
+        </div>
+    </div>
+
+    <script>
+        function toggleHistorial() {
+            const cont = document.getElementById('historialContainer');
+            cont.style.display = cont.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function calcularTotalSeleccionado() {
+            let total = 0;
+            let ids = [];
+            document.querySelectorAll('.rowCheck:checked').forEach(cb => {
+                total += parseFloat(cb.dataset.total || 0);
+                ids.push(cb.value);
+            });
+            document.getElementById('totalSeleccionado').innerText = `$${total.toFixed(2)}`;
+            document.getElementById('selectedIds').value = ids.join(',');
+        }
+
+        function toggleCheckAll(state) {
+            document.querySelectorAll('.rowCheck').forEach(cb => {
+                cb.checked = state;
+            });
+            calcularTotalSeleccionado();
+        }
+
+        document.getElementById('checkAll')?.addEventListener('change', function () {
+            toggleCheckAll(this.checked);
+        });
+
+        document.getElementById('checkAllTop')?.addEventListener('change', function () {
+            document.getElementById('checkAll').checked = this.checked;
+            toggleCheckAll(this.checked);
+        });
+
+        document.querySelectorAll('.rowCheck').forEach(cb =>
+            cb.addEventListener('change', calcularTotalSeleccionado)
+        );
+    </script>
+</body>
+</html>

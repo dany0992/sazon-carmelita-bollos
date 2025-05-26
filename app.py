@@ -1,13 +1,16 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file
-from models import db, InventarioBollos, VentasBollos, MovimientosInventario
+from models import db, InventarioBollos, VentasBollos, MovimientosInventario, DistribucionGanancias
 from datetime import datetime, date
-from sqlalchemy import func
+from sqlalchemy import func, case, and_
 import webbrowser
 import threading
 from uuid import uuid4
 from collections import defaultdict
 import os
 import subprocess
+from fpdf import FPDF
+from io import BytesIO
+
 
 app = Flask(__name__)
 # Detectar si está corriendo en Render
@@ -416,6 +419,116 @@ def respaldo_db():
     else:
         # Ruta para SQLite (local)
         return send_file("bollos.db", as_attachment=True)
+
+@app.route('/ganancias', methods=['GET', 'POST'])
+def ganancias():
+    porcentaje_banco = 10  # valor por defecto
+    mensaje = None
+    hoy = date.today()
+
+    # Procesar nueva división de ganancias (POST)
+    if request.method == 'POST':
+        try:
+            porcentaje_banco = int(request.form['porcentaje_banco'])
+            total_ventas = db.session.query(func.sum(
+                case(
+                    [(VentasBollos.sabor.in_(['Nuez', 'Pay de Limón']), 17)],
+                    else_=15
+                )
+            )).scalar() or 0
+
+            monto_banco = round(total_ventas * (porcentaje_banco / 100), 2)
+            monto_disponible = total_ventas - monto_banco
+            monto_carmen = round(monto_disponible / 2, 2)
+            monto_mary = round(monto_disponible / 2, 2)
+
+            nueva_distribucion = DistribucionGanancias(
+                total_ventas=total_ventas,
+                porcentaje_banco=porcentaje_banco,
+                monto_banco=monto_banco,
+                monto_a_dividir=monto_disponible,
+                monto_carmen=monto_carmen,
+                monto_mary=monto_mary,
+                fecha_distribucion=hoy,
+                observaciones=request.form.get('observaciones', '')
+            )
+
+            db.session.add(nueva_distribucion)
+            db.session.commit()
+            mensaje = "✅ Ganancias distribuidas correctamente."
+        except Exception as e:
+            db.session.rollback()
+            mensaje = f"❌ Error: {str(e)}"
+
+    # ------------------------------
+    # Filtros para historial (GET)
+    # ------------------------------
+    desde = request.args.get('desde')
+    hasta = request.args.get('hasta')
+    buscar = request.args.get('buscar')
+
+    filtros = []
+
+    if desde:
+        filtros.append(DistribucionGanancias.fecha_distribucion >= desde)
+    if hasta:
+        filtros.append(DistribucionGanancias.fecha_distribucion <= hasta)
+    if buscar:
+        filtros.append(DistribucionGanancias.observaciones.ilike(f"%{buscar}%"))
+
+    historial = DistribucionGanancias.query.filter(and_(*filtros)).order_by(
+        DistribucionGanancias.fecha_distribucion.desc()
+    ).all()
+
+    return render_template(
+        'ganancias.html',
+        porcentaje_banco=porcentaje_banco,
+        mensaje=mensaje,
+        historial=historial
+    )
+
+@app.route('/exportar_ganancias_pdf')
+def exportar_ganancias_pdf():
+    distribuciones = DistribucionGanancias.query.order_by(DistribucionGanancias.fecha_distribucion.desc()).all()
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.set_text_color(64, 32, 0)
+    pdf.cell(0, 10, "Historial de Distribución de Ganancias", 0, 1, "C")
+
+    pdf.set_font("Arial", size=10)
+    pdf.set_text_color(0, 0, 0)
+
+    pdf.ln(4)
+    headers = ["Fecha", "Total", "Banco", "Dividir", "Carmen", "Mary", "Obs."]
+    col_widths = [23, 25, 20, 22, 25, 25, 40]
+
+    for i, h in enumerate(headers):
+        pdf.set_fill_color(255, 204, 153)
+        pdf.cell(col_widths[i], 8, h, 1, 0, 'C', fill=True)
+    pdf.ln()
+
+    for d in distribuciones:
+        fila = [
+            d.fecha_distribucion.strftime('%d/%m/%Y'),
+            f"${d.total_ventas:.2f}",
+            f"${d.monto_banco:.2f}",
+            f"${d.monto_a_dividir:.2f}",
+            f"${d.monto_carmen:.2f}",
+            f"${d.monto_mary:.2f}",
+            d.observaciones[:25] if d.observaciones else ""
+        ]
+        for i, texto in enumerate(fila):
+            pdf.cell(col_widths[i], 7, texto, 1)
+        pdf.ln()
+
+    buffer = BytesIO()
+    pdf.output(buffer)
+    buffer.seek(0)
+
+    fecha_actual = datetime.now().strftime('%Y-%m-%d')
+    return send_file(buffer, as_attachment=True, download_name=f"distribucion_ganancias_{fecha_actual}.pdf", mimetype='application/pdf')
 
 if __name__ == '__main__':
     with app.app_context():

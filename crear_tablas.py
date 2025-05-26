@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import os
-from models import db, InventarioBollos
+from models import db, InventarioBollos, DistribucionGanancias  # ✅ Se agregó esta línea
 
 app = Flask(__name__)
 

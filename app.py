@@ -622,14 +622,18 @@ def exportar_resumen_ventas_pdf():
     response.headers['Content-Disposition'] = 'attachment; filename=resumen_ventas.pdf'
     return response
 
+
 if __name__ == '__main__':
     with app.app_context():
         if os.environ.get('RENDER') == 'true':
             from sqlalchemy import inspect
+
             inspector = inspect(db.engine)
             tablas_existentes = inspector.get_table_names()
             if not tablas_existentes:
                 db.create_all()
                 registrar_inventario_inicial()
                 print("✅ Tablas creadas automáticamente en Render.")
-    app.run(debug=True)
+
+    # 👉 Esto es lo que Render necesita para detectar que tu app está corriendo
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

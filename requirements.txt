@@ -40,3 +40,4 @@ gunicorn
 psycopg2-binary
 fpdf==1.7.2
 xhtml2pdf==0.2.10
+pdfkit==1.0.0

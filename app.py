@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, make_response
-from models import db, InventarioBollos, VentasBollos, MovimientosInventario, DistribucionGanancias
+from models import db, InventarioBollos, VentasBollos, MovimientosInventario, DistribucionGanancias, fecha_monterrey
 from datetime import datetime, date, timedelta
 from sqlalchemy import func, case, and_
 import webbrowser
@@ -12,6 +12,7 @@ from fpdf import FPDF
 from io import BytesIO
 from xhtml2pdf import pisa
 import io
+import pytz
 
 app = Flask(__name__)
 # Detectar si está corriendo en Render
@@ -24,6 +25,9 @@ else:
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+
+def fecha_monterrey():
+    return datetime.now(pytz.timezone('America/Monterrey'))
 
 # ------------------------------
 # RUTA: INICIO
@@ -92,7 +96,7 @@ def registrar_venta():
                 venta = VentasBollos(
                     vendedora=vendedora,
                     sabor=sabor,
-                    fecha_venta=datetime.now(),
+                    fecha_venta=fecha_monterrey(),
                     grupo_venta=grupo_id
                 )
                 db.session.add(venta)
@@ -237,6 +241,9 @@ def resumen_ventas():
 # ------------------------------
 @app.route('/historial_ventas')
 def historial_ventas():
+    from pytz import timezone
+    zona_monterrey = timezone('America/Monterrey')
+
     ventas = VentasBollos.query.order_by(VentasBollos.fecha_venta.desc()).all()
 
     agrupado = defaultdict(list)
@@ -251,21 +258,34 @@ def historial_ventas():
     grupos = []
 
     for grupo_id, lista in agrupado.items():
+        if not lista:
+            continue  # Previene errores si la lista está vacía
+
         ventas_detalle = []
         total = 0
         for v in lista:
             ventas_detalle.append({"id": v.id, "sabor": v.sabor})
             total += 17 if v.sabor in ['Nuez', 'Pay de Limón'] else 15
 
+        # Asegurar que la fecha tenga zona UTC antes de convertirla
+        fecha_venta = lista[0].fecha_venta
+        if fecha_venta.tzinfo is None:
+            fecha_venta = fecha_venta.replace(tzinfo=pytz.utc)
+
+        fecha_local = fecha_venta.astimezone(zona_monterrey)
+
         grupos.append({
             "grupo": grupo_id,
-            "fecha": lista[0].fecha_venta.strftime('%Y-%m-%d %H:%M'),
+            "fecha": fecha_local.strftime('%Y-%m-%d %H:%M'),
             "ventas": ventas_detalle,
             "total": total,
             "vendedora": lista[0].vendedora
         })
 
-    return render_template('historial_ventas.html', grupos=grupos, resumen_sabores=resumen_sabores, total_general=total_general)
+    return render_template('historial_ventas.html',
+                           grupos=grupos,
+                           resumen_sabores=resumen_sabores,
+                           total_general=total_general)
 
 # ------------------------------
 # RUTAS DE EDICIÓN Y ELIMINACIÓN

@@ -1,9 +1,13 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, DateTime, Date, Enum
 from datetime import datetime
+import pytz
 
 # Inicializar instancia de SQLAlchemy
 db = SQLAlchemy()
+
+def fecha_monterrey():
+    return datetime.now(pytz.timezone('America/Monterrey'))
 
 # -----------------------------
 # 📦 Inventario actual por vendedora y sabor
@@ -26,7 +30,7 @@ class VentasBollos(db.Model):
     id = Column(Integer, primary_key=True)
     sabor = Column(String(50), nullable=False)              # Sabor vendido
     vendedora = Column(String(50), nullable=False)          # Vendedora que realizó la venta
-    fecha_venta = Column(DateTime, nullable=False)          # Fecha y hora exacta de la venta
+    fecha_venta = Column(DateTime, nullable=False, default=fecha_monterrey)     # Fecha y hora exacta de la venta
     grupo_venta = Column(String(100), nullable=True)        # ID que agrupa múltiples ventas por transacción
 
 # -----------------------------

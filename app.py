@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, send_file, make_response
-from models import db, InventarioBollos, VentasBollos, MovimientosInventario, DistribucionGanancias, fecha_monterrey
+from models import db, InventarioBollos, VentasBollos, MovimientosInventario, DistribucionGanancias
 from datetime import datetime, date, timedelta
 from sqlalchemy import func, case, and_
 import webbrowser
@@ -45,7 +45,7 @@ def ventas():
 
     precios = {
         "Plátano": 15, "Fresa": 15, "Mango": 15, "Coco": 15,
-        "Chocolate": 15, "Nuez": 17, "Pay de Limón": 17
+        "Chocolate": 15, "Nuez": 17, "Pay de Limón": 17, "Mangonada": 17
     }
 
     personajes = {
@@ -55,7 +55,8 @@ def ventas():
         "Coco": "Carmeloco.png",
         "Chocolate": "Chocomelito.png",
         "Nuez": "Nuelito.png",
-        "Pay de Limón": "Paymelito.png"
+        "Pay de Limón": "Paymelito.png",
+        "Mangonada": "mangonada.jpg"
     }
 
     if request.method == 'POST':
@@ -144,6 +145,7 @@ def resumen_ventas():
         {"nombre": "Chocolate", "precio": 15},
         {"nombre": "Nuez", "precio": 17},
         {"nombre": "Pay de Limón", "precio": 17},
+        {"nombre": "Mangonada", "precio": 17},
     ]
 
     # Semana actual
@@ -371,7 +373,8 @@ def registrar_inventario_inicial():
         "Coco": 5,
         "Nuez": 5,
         "Chocolate": 4,
-        "Pay de Limón": 4
+        "Pay de Limón": 4,
+        "Mangonada": 5
     }
     for sabor, cantidad in inventario_inicial.items():
         existente = InventarioBollos.query.filter_by(vendedora="Mary", sabor=sabor).first()
@@ -389,7 +392,7 @@ def registrar_inventario_inicial():
 def inventario():
     vendedora = "Mary"
     mensaje = None
-    sabores = ["Plátano", "Fresa", "Mango", "Coco", "Chocolate", "Nuez", "Pay de Limón"]
+    sabores = ["Plátano", "Fresa", "Mango", "Coco", "Chocolate", "Nuez", "Pay de Limón", "Mangonada"]
 
     if request.method == 'POST':
         for sabor in sabores:
@@ -481,7 +484,7 @@ def ganancias():
             porcentaje_banco = int(request.form['porcentaje_banco'])
             total_ventas = db.session.query(func.sum(
                 case(
-                    [(VentasBollos.sabor.in_(['Nuez', 'Pay de Limón']), 17)],
+                    [(VentasBollos.sabor.in_(['Nuez', 'Pay de Limón', 'Mangonada']), 17)],
                     else_=15
                 )
             )).scalar() or 0
@@ -594,6 +597,7 @@ def exportar_resumen_ventas_pdf():
         {"nombre": "Chocolate", "precio": 15},
         {"nombre": "Nuez", "precio": 17},
         {"nombre": "Pay de Limón", "precio": 17},
+        {"nombre": "Mangonada", "precio": 17},
     ]
 
     resumen = []

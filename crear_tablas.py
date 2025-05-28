@@ -1,22 +1,21 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-import os
-from models import db, InventarioBollos, DistribucionGanancias  # ✅ Se agregó esta línea
+from sqlalchemy import text
+from models import db, InventarioBollos, MovimientosInventario, DistribucionGanancias
 
 app = Flask(__name__)
 
-# Configurar conexión a PostgreSQL (Render)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://bollos_db_user:tflh1x1YH3bepUYhEfLAHNK1V3LUgQIu@dpg-d0naalpr0fns738q6h30-a.oregon-postgres.render.com/bollos_db'
+# Conexión a la base de datos en Render
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://punto_venta_bwhe_user:U8cjidADjeuWDOLLp6F3Js7gkWCHPIlC@dpg-d0r4vqbe5dus73fkb280-a.oregon-postgres.render.com/punto_venta_bwhe?sslmode=require'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
-# Inicializar inventario si no existe
 def registrar_inventario_inicial():
     inventario_inicial = {
         "Plátano": 5, "Mango": 5, "Fresa": 5,
         "Coco": 5, "Nuez": 5, "Chocolate": 4,
-        "Pay de Limón": 4
+        "Pay de Limón": 4, "Mangonada": 0
     }
     for sabor, cantidad in inventario_inicial.items():
         existente = InventarioBollos.query.filter_by(vendedora="Mary", sabor=sabor).first()
@@ -29,7 +28,19 @@ def registrar_inventario_inicial():
             db.session.add(nuevo)
     db.session.commit()
 
+def agregar_columna_monto_a_dividir():
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(text("""
+                ALTER TABLE distribucion_ganancias
+                ADD COLUMN IF NOT EXISTS monto_a_dividir FLOAT DEFAULT 0;
+            """))
+            print("✅ Columna 'monto_a_dividir' agregada o ya existente.")
+    except Exception as e:
+        print("❌ Error al modificar la tabla:", e)
+
 with app.app_context():
     db.create_all()
+    agregar_columna_monto_a_dividir()
     registrar_inventario_inicial()
-    print("✅ Tablas creadas correctamente en Render.")
+    print("✅ Tablas verificadas y datos iniciales aplicados.")

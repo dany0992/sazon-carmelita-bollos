@@ -18,10 +18,10 @@ app = Flask(__name__)
 # Detectar si está corriendo en Render
 if os.environ.get('RENDER', '').lower() == 'true':
     # Conexión en línea (Render)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://bollos_db_user:tflh1x1YH3bepUYhEfLAHNK1V3LUgQIu@dpg-d0naalpr0fns738q6h30-a.oregon-postgres.render.com/bollos_db'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://punto_venta_bwhe_user:U8cjidADjeuWDOLLp6F3Js7gkWCHPIlC@dpg-d0r4vqbe5dus73fkb280-a.oregon-postgres.render.com/punto_venta_bwhe'
 else:
     # Conexión local
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://bollos_db_user:tflh1x1YH3bepUYhEfLAHNK1V3LUgQIu@dpg-d0naalpr0fns738q6h30-a.oregon-postgres.render.com/bollos_db'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://punto_venta_bwhe_user:U8cjidADjeuWDOLLp6F3Js7gkWCHPIlC@dpg-d0r4vqbe5dus73fkb280-a.oregon-postgres.render.com/punto_venta_bwhe'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -103,9 +103,13 @@ def registrar_venta():
                 db.session.add(venta)
 
                 item = InventarioBollos.query.filter_by(vendedora=vendedora, sabor=sabor).first()
-                if item and item.cantidad_actual > 0:
-                    item.cantidad_actual -= 1
-                    movimiento = MovimientoInventario(
+
+                if item:
+                    if item.cantidad_actual > 0:
+                        item.cantidad_actual -= 1
+                    else:
+                        print(f"⚠️ Sin inventario para {sabor}", flush=True)
+                    movimiento = MovimientosInventario(
                         vendedora=vendedora,
                         sabor=sabor,
                         tipo='salida',
@@ -113,6 +117,9 @@ def registrar_venta():
                         motivo='Venta AJAX'
                     )
                     db.session.add(movimiento)
+                else:
+                    print(f"❌ ERROR: No se encontró '{sabor}' en inventario", flush=True)
+                    raise Exception(f"Sabor '{sabor}' no encontrado en inventario.")
 
         db.session.commit()
 
@@ -124,7 +131,7 @@ def registrar_venta():
         return jsonify({"mensaje": "Ventas registradas correctamente.", "inventario": inventario_actual}), 200
 
     except Exception as e:
-        print("ERROR:", e)
+        print("ERROR:", e, flush=True)
         db.session.rollback()
         return jsonify({"error": "No se pudo registrar la venta."}), 500
 
@@ -388,8 +395,13 @@ def registrar_inventario_inicial():
             db.session.add(nuevo)
     db.session.commit()
 
+from pytz import timezone
+
 @app.route('/inventario', methods=['GET', 'POST'])
 def inventario():
+    from datetime import date
+    import pytz
+
     vendedora = "Mary"
     mensaje = None
     sabores = ["Plátano", "Fresa", "Mango", "Coco", "Chocolate", "Nuez", "Pay de Limón", "Mangonada"]
@@ -404,7 +416,6 @@ def inventario():
                 if item:
                     diferencia = cantidad_nueva - item.cantidad_actual
                     if diferencia != 0:
-                        # Registrar ajuste en el historial
                         movimiento = MovimientosInventario(
                             vendedora=vendedora,
                             sabor=sabor,
@@ -413,11 +424,8 @@ def inventario():
                             motivo=f"Ajuste manual: de {item.cantidad_actual} a {cantidad_nueva}"
                         )
                         db.session.add(movimiento)
-
-                        # Actualizar inventario
                         item.cantidad_actual = cantidad_nueva
                 else:
-                    # Nuevo sabor en inventario
                     nuevo = InventarioBollos(
                         vendedora=vendedora,
                         sabor=sabor,
@@ -425,7 +433,6 @@ def inventario():
                         fecha_asignacion=date.today()
                     )
                     db.session.add(nuevo)
-
                     movimiento = MovimientosInventario(
                         vendedora=vendedora,
                         sabor=sabor,
@@ -443,7 +450,27 @@ def inventario():
         for item in InventarioBollos.query.filter_by(vendedora=vendedora).all()
     }
 
-    historial = MovimientosInventario.query.filter_by(vendedora=vendedora).order_by(MovimientosInventario.fecha_movimiento.desc()).all()
+    # ✅ Formatear historial con hora local de Monterrey
+    zona_monterrey = pytz.timezone('America/Monterrey')
+    historial_raw = MovimientosInventario.query.filter_by(vendedora=vendedora).order_by(
+        MovimientosInventario.fecha_movimiento.desc()
+    ).all()
+
+    historial = []
+    for mov in historial_raw:
+        fecha = mov.fecha_movimiento
+        if fecha.tzinfo is None:
+            fecha = fecha.replace(tzinfo=pytz.utc)
+        fecha_local = fecha.astimezone(zona_monterrey)
+
+        historial.append({
+            "id": mov.id,
+            "fecha": fecha_local.strftime('%d/%m/%Y %H:%M'),
+            "sabor": mov.sabor,
+            "tipo": mov.tipo,
+            "cantidad": mov.cantidad,
+            "motivo": mov.motivo
+        })
 
     return render_template(
         'inventario.html',
@@ -452,6 +479,26 @@ def inventario():
         historial=historial,
         mensaje=mensaje
     )
+
+@app.route('/editar_movimiento/<int:id>', methods=['POST'])
+def editar_movimiento(id):
+    data = request.get_json()
+    movimiento = MovimientosInventario.query.get(id)
+    if movimiento:
+        movimiento.motivo = data.get('motivo')
+        movimiento.cantidad = int(data.get('cantidad'))
+        db.session.commit()
+        return jsonify({"mensaje": "Movimiento actualizado correctamente"})
+    return jsonify({"error": "Movimiento no encontrado"}), 404
+
+@app.route('/eliminar_movimiento/<int:id>', methods=['POST'])
+def eliminar_movimiento(id):
+    movimiento = MovimientosInventario.query.get(id)
+    if movimiento:
+        db.session.delete(movimiento)
+        db.session.commit()
+        return jsonify({"mensaje": "Movimiento eliminado correctamente"})
+    return jsonify({"error": "Movimiento no encontrado"}), 404
 
 @app.route('/respaldo_db')
 def respaldo_db():
@@ -474,53 +521,65 @@ def respaldo_db():
 
 @app.route('/ganancias', methods=['GET', 'POST'])
 def ganancias():
-    porcentaje_banco = 10  # valor por defecto
     mensaje = None
     hoy = date.today()
+    porcentaje_banco = 10  # valor por defecto inicial
 
-    # Procesar nueva división de ganancias (POST)
     if request.method == 'POST':
         try:
-            porcentaje_banco = int(request.form['porcentaje_banco'])
-            total_ventas = db.session.query(func.sum(
-                case(
-                    [(VentasBollos.sabor.in_(['Nuez', 'Pay de Limón', 'Mangonada']), 17)],
-                    else_=15
-                )
-            )).scalar() or 0
+            # Validación segura del porcentaje ingresado
+            porcentaje_banco = int(request.form.get('porcentaje_banco', 10))
+            if porcentaje_banco < 0 or porcentaje_banco > 100:
+                raise ValueError("El porcentaje debe estar entre 0 y 100.")
 
-            monto_banco = round(total_ventas * (porcentaje_banco / 100), 2)
-            monto_disponible = total_ventas - monto_banco
-            monto_carmen = round(monto_disponible / 2, 2)
-            monto_mary = round(monto_disponible / 2, 2)
+            # Evita doble registro en la misma fecha
+            distribucion_existente = DistribucionGanancias.query.filter_by(fecha_distribucion=hoy).first()
+            if distribucion_existente:
+                mensaje = "⚠️ Ya se ha realizado una distribución de ganancias hoy."
+            else:
+                # Cálculo del total de ventas
+                total_ventas = db.session.query(func.sum(
+                    case(
+                        [(VentasBollos.sabor.in_(['Nuez', 'Pay de Limón', 'Mangonada']), 17)],
+                        else_=15
+                    )
+                )).scalar() or 0
 
-            nueva_distribucion = DistribucionGanancias(
-                total_ventas=total_ventas,
-                porcentaje_banco=porcentaje_banco,
-                monto_banco=monto_banco,
-                monto_a_dividir=monto_disponible,
-                monto_carmen=monto_carmen,
-                monto_mary=monto_mary,
-                fecha_distribucion=hoy,
-                observaciones=request.form.get('observaciones', '')
-            )
+                if total_ventas == 0:
+                    mensaje = "⚠️ No hay ventas registradas para distribuir."
+                else:
+                    monto_banco = round(total_ventas * (porcentaje_banco / 100), 2)
+                    monto_disponible = total_ventas - monto_banco
+                    monto_carmen = round(monto_disponible / 2, 2)
+                    monto_mary = round(monto_disponible / 2, 2)
 
-            db.session.add(nueva_distribucion)
-            db.session.commit()
-            mensaje = "✅ Ganancias distribuidas correctamente."
+                    nueva_distribucion = DistribucionGanancias(
+                        total_ventas=total_ventas,
+                        porcentaje_banco=porcentaje_banco,
+                        monto_banco=monto_banco,
+                        monto_a_dividir=monto_disponible,
+                        monto_carmen=monto_carmen,
+                        monto_mary=monto_mary,
+                        fecha_distribucion=hoy,
+                        observaciones=request.form.get('observaciones', '')
+                    )
+
+                    db.session.add(nueva_distribucion)
+                    db.session.commit()
+                    mensaje = "✅ Ganancias distribuidas correctamente."
+
+        except ValueError as ve:
+            mensaje = f"❌ Error en porcentaje: {ve}"
         except Exception as e:
             db.session.rollback()
-            mensaje = f"❌ Error: {str(e)}"
+            mensaje = f"❌ Error inesperado: {str(e)}"
 
-    # ------------------------------
     # Filtros para historial (GET)
-    # ------------------------------
     desde = request.args.get('desde')
     hasta = request.args.get('hasta')
     buscar = request.args.get('buscar')
 
     filtros = []
-
     if desde:
         filtros.append(DistribucionGanancias.fecha_distribucion >= desde)
     if hasta:

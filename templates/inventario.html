@@ -23,6 +23,19 @@
         tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+        .btn-editar, .btn-eliminar {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 0 4px;
+        }
+        .btn-editar:hover {
+            color: #007bff;
+        }
+        .btn-eliminar:hover {
+            color: red;
+        }
     </style>
 </head>
 <body class="actualizar-inventario-body">
@@ -40,11 +53,11 @@
                 <label for="{{ sabor }}">{{ sabor }}</label>
                 <input type="number" name="{{ sabor }}" min="0" value="{{ inventario.get(sabor, 0) }}">
             {% endfor %}
-
             <button type="submit" class="menu-button">✅ Guardar Cambios</button>
         </form>
 
         <h2 style="margin-top: 40px;">📋 Historial de Movimientos</h2>
+
         <table>
             <thead>
                 <tr>
@@ -53,16 +66,26 @@
                     <th>Tipo</th>
                     <th>Cantidad</th>
                     <th>Motivo</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 {% for mov in historial %}
                     <tr>
-                        <td>{{ mov.fecha_movimiento.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ mov.fecha }}</td>
                         <td>{{ mov.sabor }}</td>
                         <td>{{ mov.tipo.capitalize() }}</td>
                         <td>{{ mov.cantidad }}</td>
                         <td>{{ mov.motivo or '' }}</td>
+                        <td>
+                            <button class="btn-editar"
+                                onclick="editarMovimiento({{ mov.id }}, '{{ mov.sabor }}', '{{ mov.tipo }}', {{ mov.cantidad }}, '{{ mov.motivo | default('') | escape }}')">
+                                ✏️
+                            </button>
+                            <button class="btn-eliminar" onclick="eliminarMovimiento({{ mov.id }})">
+                                🗑️
+                            </button>
+                        </td>
                     </tr>
                 {% endfor %}
             </tbody>
@@ -72,5 +95,37 @@
             <a href="/">🏠 Volver al Menú Principal</a>
         </div>
     </div>
+
+    <script>
+        function editarMovimiento(id, sabor, tipo, cantidad, motivo) {
+            const nuevoMotivo = prompt(`Editar motivo del movimiento (${sabor}):`, decodeURIComponent(motivo));
+            const nuevaCantidad = prompt(`Editar cantidad (${sabor}):`, cantidad);
+            if (nuevoMotivo !== null && nuevaCantidad !== null) {
+                fetch(`/editar_movimiento/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ motivo: nuevoMotivo, cantidad: nuevaCantidad })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.mensaje || data.error);
+                    location.reload();
+                });
+            }
+        }
+
+        function eliminarMovimiento(id) {
+            if (confirm("¿Estás seguro que deseas eliminar este movimiento?")) {
+                fetch(`/eliminar_movimiento/${id}`, {
+                    method: 'POST'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.mensaje || data.error);
+                    location.reload();
+                });
+            }
+        }
+    </script>
 </body>
 </html>
